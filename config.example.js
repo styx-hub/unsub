@@ -8,7 +8,7 @@
 // 4. Credentials → Create OAuth client ID → Web application
 // 5. Paste the Client ID below
 
-const CONFIG = {
+export const CONFIG = {
   CLIENT_ID: 'YOUR_CLIENT_ID.apps.googleusercontent.com',
 
   // Max messages to scan (Gmail API quota: ~250 units/s, messages.get = ~5 units)
