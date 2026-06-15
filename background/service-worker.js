@@ -1,6 +1,6 @@
 // Service worker — message router for auth, scan, and unsubscribe operations.
 
-import { login, logout, getToken, getUserEmail } from '../lib/auth.js';
+import { login, logout, getToken, getUserEmail, getStoredEmail, refreshToken } from '../lib/auth.js';
 
 // Open the side panel automatically when the toolbar icon is clicked (MV3 recommended approach).
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
@@ -20,18 +20,13 @@ async function handleMessage(message) {
     case 'GET_STATUS': {
       const token = await getToken();
       if (!token) return { loggedIn: false };
-      try {
-        const email = await getUserEmail(token);
-        return { loggedIn: true, email };
-      } catch {
-        // Token might be expired — treat as logged out
-        return { loggedIn: false };
-      }
+      const email = await getStoredEmail();
+      return { loggedIn: true, email };
     }
 
     case 'LOGIN': {
-      const token = await login();
-      const email = await getUserEmail(token);
+      await login();
+      const email = await getStoredEmail();
       console.log('[SW] logged in as:', email);
       return { email };
     }
