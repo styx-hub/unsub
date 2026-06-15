@@ -175,8 +175,8 @@ function showResults(results) {
     const extras = [];
     if (r.archived != null) extras.push(`archivovaných ${r.archived} mailov`);
     if (r.filterCreated) extras.push('filter vytvorený');
-    if (r.archiveError) extras.push(`archivácia zlyhala`);
-    if (r.filterError) extras.push(`filter zlyhal`);
+    if (r.archiveError) extras.push(`archivácia zlyhala: ${r.archiveError}`);
+    if (r.filterError) extras.push(`filter zlyhal: ${r.filterError}`);
     const detailText = [r.detail, ...extras].filter(Boolean).join(' · ');
     item.innerHTML = `
       <span class="result-status">${icon}</span>
