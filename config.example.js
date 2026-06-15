@@ -10,6 +10,8 @@
 
 export const CONFIG = {
   CLIENT_ID: 'YOUR_CLIENT_ID.apps.googleusercontent.com',
+  // Client secret for Web application OAuth client — stays in config.js (gitignored), never committed.
+  CLIENT_SECRET: 'YOUR_CLIENT_SECRET',
 
   // Max messages to scan (Gmail API quota: ~250 units/s, messages.get = ~5 units)
   SCAN_LIMIT: 1000,
