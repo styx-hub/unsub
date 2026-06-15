@@ -25,7 +25,6 @@
   },
 
   "action": {
-    "default_title": "Gmail Unsubscriber",
-    "default_popup": ""
+    "default_title": "Gmail Unsubscriber"
   }
 }

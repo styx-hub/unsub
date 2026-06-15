@@ -2,9 +2,8 @@
 
 import { login, logout, getToken, getUserEmail } from '../lib/auth.js';
 
-chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ tabId: tab.id });
-});
+// Open the side panel automatically when the toolbar icon is clicked (MV3 recommended approach).
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[SW] received message:', message.type);
