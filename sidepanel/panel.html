@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gmail Newsletter Unsubscriber</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+
+  <header class="header">
+    <h1>Newsletter Unsubscriber</h1>
+    <span id="account-badge" class="account-badge hidden"></span>
+  </header>
+
+  <main class="main">
+
+    <!-- Auth section -->
+    <section id="auth-section">
+      <p id="auth-status">Prihlás sa, aby si mohol skenovať svoju schránku.</p>
+      <div class="btn-row">
+        <button id="btn-login" class="btn btn-primary">Prihlásiť sa</button>
+        <button id="btn-logout" class="btn btn-secondary hidden">Odhlásiť sa</button>
+      </div>
+    </section>
+
+    <!-- Scan controls -->
+    <section id="scan-section" class="hidden">
+      <div class="btn-row">
+        <button id="btn-scan" class="btn btn-primary">Skenovať schránku</button>
+        <button id="btn-abort" class="btn btn-secondary hidden">Zastaviť</button>
+      </div>
+    </section>
+
+    <!-- Progress -->
+    <section id="progress-section">
+      <div class="progress-bar-track">
+        <div id="progress-bar" class="progress-bar-fill"></div>
+      </div>
+      <span id="progress-label">Pripravujem…</span>
+    </section>
+
+    <!-- Toolbar (search + select-all) -->
+    <section id="toolbar">
+      <input id="search-input" type="search" placeholder="Hľadať odosielateľa…">
+      <div class="toolbar-row">
+        <input id="select-all-checkbox" type="checkbox">
+        <label id="select-all-label" for="select-all-checkbox">Vybrať všetkých</label>
+        <span id="selected-count"></span>
+      </div>
+    </section>
+
+    <!-- Sender list -->
+    <section id="sender-list"></section>
+
+    <!-- Empty state -->
+    <section id="empty-state">
+      <span class="empty-icon">📭</span>
+      <p>Žiadne newslettre neboli nájdené.</p>
+      <p>Skúste skenovať s väčším limitom správ.</p>
+    </section>
+
+    <!-- Unsubscribe action -->
+    <section id="unsub-section" class="hidden">
+      <button id="btn-unsub" class="btn btn-danger">Odhlásiť vybrané</button>
+    </section>
+
+    <!-- Results section -->
+    <section id="results-section">
+      <h2 style="font-size:14px;font-weight:500;margin-bottom:4px;">Výsledky odhlásenia</h2>
+      <div id="results-list"></div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button id="btn-back" class="btn btn-secondary">Späť na zoznam</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Confirmation modal -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <h2>Potvrdiť odhlásenie</h2>
+      <div class="modal-body">
+        <p id="modal-summary"></p>
+        <div id="modal-list" class="modal-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn btn-secondary">Zrušiť</button>
+        <button id="modal-confirm" class="btn btn-danger">Potvrdiť</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="panel.js" type="module"></script>
+</body>
+</html>

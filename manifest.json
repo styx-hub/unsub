@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Gmail Newsletter Unsubscriber",
+  "version": "1.0.0",
+  "description": "Scan your Gmail for newsletters and bulk unsubscribe via one-click POST or mailto.",
+
+  "permissions": [
+    "sidePanel",
+    "identity",
+    "storage",
+    "tabs"
+  ],
+
+  "host_permissions": [
+    "<all_urls>"
+  ],
+
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+
+  "side_panel": {
+    "default_path": "sidepanel/panel.html"
+  },
+
+  "action": {
+    "default_title": "Gmail Unsubscriber",
+    "default_popup": ""
+  },
+
+  "oauth2": {
+    "client_id": "__REPLACED_AT_RUNTIME__",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.send"
+    ]
+  }
+}
