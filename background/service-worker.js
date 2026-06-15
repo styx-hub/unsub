@@ -1,6 +1,5 @@
 // Service worker — message router for auth, scan, and unsubscribe operations.
-
-import { login, logout, getToken, getUserEmail } from '../lib/auth.js';
+// Auth helpers are loaded dynamically so a missing config.js doesn't prevent the side panel from opening.
 
 // Open the side panel automatically when the toolbar icon is clicked (MV3 recommended approach).
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
@@ -15,13 +14,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function handleMessage(message) {
+  // Auth helpers loaded dynamically — safe even if config.js is missing during early phases.
+  const auth = await import('../lib/auth.js');
+
   switch (message.type) {
 
     case 'GET_STATUS': {
-      const token = await getToken();
+      const token = await auth.getToken();
       if (!token) return { loggedIn: false };
       try {
-        const email = await getUserEmail(token);
+        const email = await auth.getUserEmail(token);
         return { loggedIn: true, email };
       } catch {
         // Token might be expired — treat as logged out
@@ -30,14 +32,14 @@ async function handleMessage(message) {
     }
 
     case 'LOGIN': {
-      const token = await login();
-      const email = await getUserEmail(token);
+      const token = await auth.login();
+      const email = await auth.getUserEmail(token);
       console.log('[SW] logged in as:', email);
       return { email };
     }
 
     case 'LOGOUT': {
-      await logout();
+      await auth.logout();
       return { ok: true };
     }
 
