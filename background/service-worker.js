@@ -1,6 +1,7 @@
 // Service worker — message router for auth, scan, and unsubscribe operations.
 
 import { login, logout, getToken, getUserEmail, getStoredEmail, refreshToken } from '../lib/auth.js';
+import { scan, abortScan } from '../lib/scanner.js';
 
 // Open the side panel automatically when the toolbar icon is clicked (MV3 recommended approach).
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
@@ -39,12 +40,25 @@ async function handleMessage(message) {
     case 'PING':
       return { ok: true };
 
-    case 'SCAN':
-      // Phase 3 — stub
-      return { error: 'Scan not yet implemented (Phase 3)' };
+    case 'SCAN': {
+      // Run scan in background — progress is pushed to panel via sendMessage.
+      scan((progress) => {
+        chrome.runtime.sendMessage({ type: 'SCAN_PROGRESS', ...progress }).catch(() => {});
+      }).then((senders) => {
+        if (senders === null) {
+          chrome.runtime.sendMessage({ type: 'SCAN_ERROR', error: 'Skenovanie zrušené' }).catch(() => {});
+        } else {
+          chrome.runtime.sendMessage({ type: 'SCAN_DONE', senders }).catch(() => {});
+        }
+      }).catch((err) => {
+        console.error('[SW] scan error:', err);
+        chrome.runtime.sendMessage({ type: 'SCAN_ERROR', error: err.message }).catch(() => {});
+      });
+      return { ok: true }; // immediate ack — results arrive via push messages
+    }
 
     case 'ABORT_SCAN':
-      // Phase 3
+      abortScan();
       return { ok: true };
 
     case 'UNSUBSCRIBE':
