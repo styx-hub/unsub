@@ -1,4 +1,4 @@
-// Phase 1 stub — wires up basic UI state, no real API calls yet.
+// Side panel UI — state management, rendering, event wiring.
 
 const $ = (id) => document.getElementById(id);
 
@@ -37,10 +37,12 @@ let state = {
   loggedIn: false,
   userEmail: null,
   scanning: false,
-  senders: [],       // [{ email, displayName, count, unsubType, lastListUnsubscribe, lastListUnsubscribePost }]
+  senders: [],
   filtered: [],
   selected: new Set(),
   results: [],
+  unsubLog: {},  // { email: { date, status, displayName } }
+  scanDate: null,
 };
 
 // ── Rendering ──────────────────────────────────────────────────────────────
@@ -98,18 +100,33 @@ function renderSenderList() {
       'manual': '⚠️ Manuálne',
     }[sender.unsubType] || '⚠️ Manuálne';
 
+    const unsubEntry = state.unsubLog[sender.email];
+    const wasUnsubbed = !!unsubEntry;
+    const unsubDateStr = wasUnsubbed
+      ? new Date(unsubEntry.date).toLocaleDateString('sk-SK')
+      : null;
+
     item.innerHTML = `
       <input type="checkbox" class="sender-checkbox" data-email="${sender.email}"
-        ${state.selected.has(sender.email) ? 'checked' : ''}>
+        ${state.selected.has(sender.email) ? 'checked' : ''}
+        ${wasUnsubbed ? 'disabled' : ''}>
       <div class="sender-info">
         <div class="sender-name">${escapeHtml(sender.displayName)}</div>
         <div class="sender-email">${escapeHtml(sender.email)}</div>
         <div class="sender-meta">
-          <span class="badge ${badgeClass}">${badgeLabel}</span>
+          ${wasUnsubbed
+            ? `<span class="badge badge-unsubbed">✓ Odhlásené ${unsubDateStr}</span>`
+            : `<span class="badge ${badgeClass}">${badgeLabel}</span>`
+          }
           <span class="msg-count">${sender.count} správ</span>
         </div>
       </div>
     `;
+
+    if (wasUnsubbed) {
+      item.classList.add('unsubbed');
+      return item; // skip click/checkbox listeners for unsubscribed senders
+    }
 
     item.addEventListener('click', (e) => {
       if (e.target.classList.contains('sender-checkbox')) return;
@@ -335,6 +352,8 @@ chrome.runtime.onMessage.addListener((message) => {
 
     case 'SCAN_DONE':
       state.senders = message.senders || [];
+      state.unsubLog = message.unsubLog || state.unsubLog;
+      state.scanDate = Date.now();
       state.filtered = [...state.senders];
       state.selected.clear();
       btnScan.disabled = false;
@@ -359,6 +378,7 @@ chrome.runtime.onMessage.addListener((message) => {
       break;
 
     case 'UNSUBSCRIBE_DONE':
+      state.unsubLog = message.unsubLog || state.unsubLog;
       showProgress(false);
       showResults(message.results);
       break;
@@ -368,11 +388,20 @@ chrome.runtime.onMessage.addListener((message) => {
 // ── Init ───────────────────────────────────────────────────────────────────
 
 async function init() {
-  // Check if already logged in (token in storage)
   const resp = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
   if (resp?.loggedIn) {
     state.loggedIn = true;
     state.userEmail = resp.email || null;
+    state.unsubLog = resp.unsubLog || {};
+
+    if (resp.scanCache?.senders?.length) {
+      state.senders = resp.scanCache.senders;
+      state.scanDate = resp.scanCache.scannedAt;
+      state.filtered = [...state.senders];
+      renderSenderList();
+      const d = new Date(state.scanDate).toLocaleString('sk-SK', { dateStyle: 'short', timeStyle: 'short' });
+      console.log('[Panel] restored scan cache from', d);
+    }
   }
   renderAuth();
   console.log('[Panel] initialized, loggedIn:', state.loggedIn);

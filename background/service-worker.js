@@ -25,7 +25,8 @@ async function handleMessage(message) {
       const token = await getToken();
       if (!token) return { loggedIn: false };
       const email = await getStoredEmail();
-      return { loggedIn: true, email };
+      const { scan_cache, unsubscribed_log } = await chrome.storage.local.get(['scan_cache', 'unsubscribed_log']);
+      return { loggedIn: true, email, scanCache: scan_cache || null, unsubLog: unsubscribed_log || {} };
     }
 
     case 'LOGIN': {
@@ -37,17 +38,20 @@ async function handleMessage(message) {
 
     case 'LOGOUT': {
       await logout();
+      await chrome.storage.local.remove(['scan_cache', 'unsubscribed_log']);
       return { ok: true };
     }
 
     case 'SCAN': {
       scan((progress) => {
         chrome.runtime.sendMessage({ type: 'SCAN_PROGRESS', ...progress }).catch(() => {});
-      }).then((senders) => {
+      }).then(async (senders) => {
         if (senders === null) {
           chrome.runtime.sendMessage({ type: 'SCAN_ERROR', error: 'Skenovanie zrušené' }).catch(() => {});
         } else {
-          chrome.runtime.sendMessage({ type: 'SCAN_DONE', senders }).catch(() => {});
+          await chrome.storage.local.set({ scan_cache: { senders, scannedAt: Date.now() } });
+          const { unsubscribed_log } = await chrome.storage.local.get('unsubscribed_log');
+          chrome.runtime.sendMessage({ type: 'SCAN_DONE', senders, unsubLog: unsubscribed_log || {} }).catch(() => {});
         }
       }).catch((err) => {
         console.error('[SW] scan error:', err);
@@ -121,8 +125,19 @@ async function handleMessage(message) {
           }
         }
 
+        // Persist unsubscribed senders with timestamp
+        const { unsubscribed_log: existing } = await chrome.storage.local.get('unsubscribed_log');
+        const log = existing || {};
+        const now = Date.now();
+        for (const r of results) {
+          if (r.status === 'success' || r.status === 'email' || r.status === 'manual') {
+            log[r.email] = { date: now, status: r.status, displayName: r.displayName };
+          }
+        }
+        await chrome.storage.local.set({ unsubscribed_log: log });
+
         pushProgress(100, 'Hotovo');
-        chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE_DONE', results }).catch(() => {});
+        chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE_DONE', results, unsubLog: log }).catch(() => {});
       })();
 
       return { ok: true };
