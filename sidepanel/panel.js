@@ -282,12 +282,12 @@ modalCancel.addEventListener('click', () => {
 
 modalConfirm.addEventListener('click', async () => {
   modalOverlay.classList.remove('visible');
-  const emails = [...state.selected];
+  const senders = state.senders.filter(s => state.selected.has(s.email));
   showProgress(true);
   setProgress(0, 'Odhlašujem…');
   btnUnsub.disabled = true;
 
-  const resp = await chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE', emails });
+  const resp = await chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE', senders });
   if (resp?.error) {
     console.error('[Panel] Unsubscribe error:', resp.error);
     setProgress(0, `Chyba: ${resp.error}`);

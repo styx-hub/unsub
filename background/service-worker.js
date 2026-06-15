@@ -2,6 +2,7 @@
 
 import { login, logout, getToken, getUserEmail, getStoredEmail, refreshToken } from '../lib/auth.js';
 import { scan, abortScan } from '../lib/scanner.js';
+import { unsubscribeSender } from '../lib/unsubscriber.js';
 
 // Open the side panel automatically when the toolbar icon is clicked (MV3 recommended approach).
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
@@ -61,9 +62,26 @@ async function handleMessage(message) {
       abortScan();
       return { ok: true };
 
-    case 'UNSUBSCRIBE':
-      // Phase 5 — stub
-      return { error: 'Unsubscribe not yet implemented (Phase 5)' };
+    case 'UNSUBSCRIBE': {
+      const { emails, senders } = message;
+      // Run in background — progress pushed to panel
+      (async () => {
+        const results = [];
+        for (let i = 0; i < senders.length; i++) {
+          const sender = senders[i];
+          const pct = Math.round(((i + 1) / senders.length) * 100);
+          chrome.runtime.sendMessage({
+            type: 'UNSUBSCRIBE_PROGRESS',
+            pct,
+            label: `Odhlasovanie ${i + 1} / ${senders.length}: ${sender.displayName || sender.email}`,
+          }).catch(() => {});
+          const result = await unsubscribeSender(sender);
+          results.push(result);
+        }
+        chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE_DONE', results }).catch(() => {});
+      })();
+      return { ok: true };
+    }
 
     default:
       console.warn('[SW] unknown message type:', message.type);
