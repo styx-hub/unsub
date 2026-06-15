@@ -3,65 +3,96 @@
 const $ = (id) => document.getElementById(id);
 
 // UI element references
-const btnLogin = $('btn-login');
-const btnLogout = $('btn-logout');
-const btnScan = $('btn-scan');
-const btnAbort = $('btn-abort');
-const btnUnsub = $('btn-unsub');
-const btnBack = $('btn-back');
-const authStatus = $('auth-status');
-const accountBadge = $('account-badge');
-const scanSection = $('scan-section');
-const progressSection = $('progress-section');
-const progressBar = $('progress-bar');
-const progressLabel = $('progress-label');
-const toolbar = $('toolbar');
-const senderList = $('sender-list');
-const emptyState = $('empty-state');
-const unsubSection = $('unsub-section');
-const resultsSection = $('results-section');
-const resultsList = $('results-list');
-const searchInput = $('search-input');
+const btnLogin          = $('btn-login');
+const btnLogout         = $('btn-logout');
+const btnScan           = $('btn-scan');
+const btnAbort          = $('btn-abort');
+const btnUnsub          = $('btn-unsub');
+const btnBack           = $('btn-back');
+const authStatus        = $('auth-status');
+const accountBadge      = $('account-badge');
+const onboardingSection = $('onboarding-section');
+const appSection        = $('app-section');
+const scanDateLabel     = $('scan-date-label');
+const progressSection   = $('progress-section');
+const progressBar       = $('progress-bar');
+const progressLabel     = $('progress-label');
+const statsBar          = $('stats-bar');
+const statFound         = $('stat-found');
+const statUnsubbed      = $('stat-unsubbed');
+const toolbar           = $('toolbar');
+const senderList        = $('sender-list');
+const welcomeState      = $('welcome-state');
+const emptyState        = $('empty-state');
+const unsubSection      = $('unsub-section');
+const resultsSection    = $('results-section');
+const resultsList       = $('results-list');
+const searchInput       = $('search-input');
 const selectAllCheckbox = $('select-all-checkbox');
-const selectedCount = $('selected-count');
-const modalOverlay = $('modal-overlay');
-const modalSummary = $('modal-summary');
-const modalList = $('modal-list');
-const modalCancel = $('modal-cancel');
-const modalConfirm = $('modal-confirm');
-const optArchive = $('opt-archive');
-const optFilter = $('opt-filter');
+const selectedCount     = $('selected-count');
+const infoOverlay       = $('info-overlay');
+const btnInfoClose      = $('btn-info-close');
+const modalOverlay      = $('modal-overlay');
+const modalSummary      = $('modal-summary');
+const modalList         = $('modal-list');
+const modalCancel       = $('modal-cancel');
+const modalConfirm      = $('modal-confirm');
+const optArchive        = $('opt-archive');
+const optFilter         = $('opt-filter');
 
 // App state
 let state = {
-  loggedIn: false,
+  loggedIn:  false,
   userEmail: null,
-  scanning: false,
-  senders: [],
-  filtered: [],
-  selected: new Set(),
-  results: [],
-  unsubLog: {},  // { email: { date, status, displayName } }
-  scanDate: null,
+  scanning:  false,
+  senders:   [],
+  filtered:  [],
+  selected:  new Set(),
+  results:   [],
+  unsubLog:  {},
+  scanDate:  null,
 };
 
-// ── Rendering ──────────────────────────────────────────────────────────────
+// ── Avatar helpers ──────────────────────────────────────────────────────────
+
+const AVATAR_COLORS = [
+  '#1a73e8','#0f9d58','#f4511e','#9334e6',
+  '#00897b','#e91e63','#f9ab00','#5c6bc0',
+];
+
+function avatarColor(email) {
+  let h = 0;
+  for (const c of email) h = (h * 31 + c.charCodeAt(0)) & 0x7fffffff;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
+function avatarLetter(displayName) {
+  return (displayName || '?')[0].toUpperCase();
+}
+
+// ── Rendering ───────────────────────────────────────────────────────────────
 
 function renderAuth() {
   if (state.loggedIn) {
-    authStatus.textContent = 'Prihlásený ako:';
+    onboardingSection.classList.add('hidden');
+    appSection.classList.remove('hidden');
     accountBadge.textContent = state.userEmail || '';
     accountBadge.classList.remove('hidden');
-    btnLogin.classList.add('hidden');
     btnLogout.classList.remove('hidden');
-    scanSection.classList.remove('hidden');
   } else {
-    authStatus.textContent = 'Prihlás sa, aby si mohol skenovať svoju schránku.';
+    onboardingSection.classList.remove('hidden');
+    appSection.classList.add('hidden');
     accountBadge.classList.add('hidden');
-    btnLogin.classList.remove('hidden');
     btnLogout.classList.add('hidden');
-    scanSection.classList.add('hidden');
   }
+}
+
+function renderStats() {
+  const total    = state.senders.length;
+  const unsubbed = Object.keys(state.unsubLog).length;
+  statFound.textContent   = total;
+  statUnsubbed.textContent = unsubbed;
+  statsBar.classList.toggle('hidden', total === 0);
 }
 
 function renderSenderList() {
@@ -71,61 +102,64 @@ function renderSenderList() {
     s.email.toLowerCase().includes(query)
   );
 
-  if (state.senders.length === 0) {
-    toolbar.style.display = 'none';
+  const hasAnySenders = state.senders.length > 0;
+
+  welcomeState.style.display = 'none';
+  emptyState.style.display   = 'none';
+  toolbar.style.display      = hasAnySenders ? 'flex' : 'none';
+
+  if (!hasAnySenders) {
+    // Was scanned (scanDate set) but nothing found
+    if (state.scanDate) emptyState.style.display = 'flex';
+    else                welcomeState.style.display = 'flex';
     senderList.innerHTML = '';
-    emptyState.style.display = 'flex';
     unsubSection.classList.add('hidden');
     return;
   }
 
-  emptyState.style.display = 'none';
-  toolbar.style.display = 'flex';
-
   senderList.innerHTML = '';
   for (const sender of state.filtered) {
     const item = document.createElement('div');
-    item.className = 'sender-item' + (state.selected.has(sender.email) ? ' selected' : '');
-    item.dataset.email = sender.email;
-
-    const badgeClass = {
-      'one-click': 'badge-one-click',
-      'mailto': 'badge-mailto',
-      'manual': 'badge-manual',
-    }[sender.unsubType] || 'badge-manual';
-
-    const badgeLabel = {
-      'one-click': '🟢 One-click',
-      'mailto': '✉️ Email',
-      'manual': '⚠️ Manuálne',
-    }[sender.unsubType] || '⚠️ Manuálne';
-
-    const unsubEntry = state.unsubLog[sender.email];
+    const unsubEntry  = state.unsubLog[sender.email];
     const wasUnsubbed = !!unsubEntry;
     const unsubDateStr = wasUnsubbed
       ? new Date(unsubEntry.date).toLocaleDateString('sk-SK')
       : null;
 
+    item.className = 'sender-item' +
+      (state.selected.has(sender.email) ? ' selected' : '') +
+      (wasUnsubbed ? ' unsubbed' : '');
+    item.dataset.email = sender.email;
+
+    const badgeClass = wasUnsubbed ? 'badge-unsubbed' : {
+      'one-click': 'badge-one-click',
+      'mailto':    'badge-mailto',
+      'manual':    'badge-manual',
+    }[sender.unsubType] || 'badge-manual';
+
+    const badgeLabel = wasUnsubbed
+      ? `✓ Odhlásené ${unsubDateStr}`
+      : { 'one-click': '🟢 One-click', 'mailto': '✉️ Email', 'manual': '⚠️ Manuálne' }[sender.unsubType] || '⚠️ Manuálne';
+
     item.innerHTML = `
-      <input type="checkbox" class="sender-checkbox" data-email="${sender.email}"
-        ${state.selected.has(sender.email) ? 'checked' : ''}
-        ${wasUnsubbed ? 'disabled' : ''}>
+      <div class="sender-avatar" style="background:${avatarColor(sender.email)}">${avatarLetter(sender.displayName)}</div>
       <div class="sender-info">
         <div class="sender-name">${escapeHtml(sender.displayName)}</div>
         <div class="sender-email">${escapeHtml(sender.email)}</div>
         <div class="sender-meta">
-          ${wasUnsubbed
-            ? `<span class="badge badge-unsubbed">✓ Odhlásené ${unsubDateStr}</span>`
-            : `<span class="badge ${badgeClass}">${badgeLabel}</span>`
-          }
+          <span class="badge ${badgeClass}">${badgeLabel}</span>
           <span class="msg-count">${sender.count} správ</span>
+          ${sender.lastMessageDate ? `<span class="msg-date">${formatLastDate(sender.lastMessageDate)}</span>` : ''}
         </div>
       </div>
+      <input type="checkbox" class="sender-checkbox" data-email="${sender.email}"
+        ${state.selected.has(sender.email) ? 'checked' : ''}
+        ${wasUnsubbed ? 'disabled' : ''}>
     `;
 
     if (wasUnsubbed) {
-      item.classList.add('unsubbed');
-      return item; // skip click/checkbox listeners for unsubscribed senders
+      senderList.appendChild(item);
+      continue;
     }
 
     item.addEventListener('click', (e) => {
@@ -146,30 +180,28 @@ function renderSenderList() {
 }
 
 function updateSelectAllState() {
-  const visibleEmails = state.filtered.map(s => s.email);
-  const allSelected = visibleEmails.length > 0 &&
-    visibleEmails.every(e => state.selected.has(e));
-  selectAllCheckbox.checked = allSelected;
-  selectAllCheckbox.indeterminate = !allSelected &&
-    visibleEmails.some(e => state.selected.has(e));
+  const selectable = state.filtered.filter(s => !state.unsubLog[s.email]).map(s => s.email);
+  const allSelected = selectable.length > 0 && selectable.every(e => state.selected.has(e));
+  selectAllCheckbox.checked       = allSelected;
+  selectAllCheckbox.indeterminate = !allSelected && selectable.some(e => state.selected.has(e));
 }
 
 function updateSelectedCount() {
   const n = state.selected.size;
   selectedCount.textContent = n > 0 ? `${n} vybraných` : '';
+  btnUnsub.textContent = n > 0
+    ? `Odhlásiť vybrané (${n})`
+    : 'Odhlásiť vybrané';
 }
 
 function toggleSender(email) {
-  if (state.selected.has(email)) {
-    state.selected.delete(email);
-  } else {
-    state.selected.add(email);
-  }
+  if (state.selected.has(email)) state.selected.delete(email);
+  else                           state.selected.add(email);
   renderSenderList();
 }
 
 function setProgress(pct, label) {
-  progressBar.style.width = `${pct}%`;
+  progressBar.style.width  = `${pct}%`;
   progressLabel.textContent = label;
 }
 
@@ -183,6 +215,7 @@ function showResults(results) {
   toolbar.style.display = 'none';
   unsubSection.classList.add('hidden');
   progressSection.style.display = 'none';
+  statsBar.classList.add('hidden');
 
   resultsList.innerHTML = '';
   for (const r of results) {
@@ -190,15 +223,17 @@ function showResults(results) {
     item.className = 'result-item';
     const icon = { success: '✅', email: '✉️', manual: '⚠️', error: '❌' }[r.status] || '❓';
     const extras = [];
-    if (r.archived != null) extras.push(`archivovaných ${r.archived} mailov`);
-    if (r.filterCreated) extras.push('filter vytvorený');
-    if (r.archiveError) extras.push(`archivácia zlyhala: ${r.archiveError}`);
-    if (r.filterError) extras.push(`filter zlyhal: ${r.filterError}`);
+    if (r.archived != null)  extras.push(`${r.archived} mailov archivovaných`);
+    if (r.filterCreated)     extras.push('filter vytvorený');
+    if (r.archiveError)      extras.push(`archivácia: ${r.archiveError}`);
+    if (r.filterError)       extras.push(`filter: ${r.filterError}`);
     const detailText = [r.detail, ...extras].filter(Boolean).join(' · ');
     item.innerHTML = `
       <span class="result-status">${icon}</span>
-      <span class="result-sender">${escapeHtml(r.displayName || r.email)}</span>
-      <span class="result-detail">${escapeHtml(detailText)}</span>
+      <div class="result-body">
+        <span class="result-sender">${escapeHtml(r.displayName || r.email)}</span>
+        ${detailText ? `<span class="result-detail">${escapeHtml(detailText)}</span>` : ''}
+      </div>
     `;
     resultsList.appendChild(item);
   }
@@ -214,37 +249,65 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-// ── Event handlers ─────────────────────────────────────────────────────────
+function formatLastDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = new Date();
+  const diffDays = Math.floor((now - d) / 86400000);
+  if (diffDays === 0) return 'dnes';
+  if (diffDays === 1) return 'včera';
+  if (diffDays < 7)  return `pred ${diffDays} dňami`;
+  return d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' });
+}
+
+function updateScanDateLabel() {
+  if (!state.scanDate) { scanDateLabel.textContent = ''; return; }
+  const d = new Date(state.scanDate);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  scanDateLabel.textContent = 'Posledný sken: ' + (sameDay
+    ? d.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' }));
+}
+
+// ── Event handlers ──────────────────────────────────────────────────────────
 
 btnLogin.addEventListener('click', async () => {
-  console.log('[Panel] Login clicked — sending LOGIN message to SW');
-  btnLogin.disabled = true;
-  authStatus.textContent = 'Prihlasujem…';
+  btnLogin.disabled    = true;
+  btnLogin.textContent = 'Prihlasujem…';
+  authStatus.classList.add('hidden');
 
   try {
     const resp = await chrome.runtime.sendMessage({ type: 'LOGIN' });
     if (resp?.error) throw new Error(resp.error);
-    state.loggedIn = true;
+    state.loggedIn  = true;
     state.userEmail = resp.email || null;
     renderAuth();
+    welcomeState.style.display = 'flex';
   } catch (err) {
     console.error('[Panel] Login error:', err);
-    authStatus.textContent = `Chyba prihlásenia: ${err.message}`;
+    authStatus.textContent = `Chyba: ${err.message}`;
+    authStatus.classList.remove('hidden');
   } finally {
-    btnLogin.disabled = false;
+    btnLogin.disabled    = false;
+    btnLogin.textContent = 'Prihlásiť sa cez Google';
   }
 });
 
 btnLogout.addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'LOGOUT' });
-  state.loggedIn = false;
+  state.loggedIn  = false;
   state.userEmail = null;
-  state.senders = [];
-  state.filtered = [];
+  state.senders   = [];
+  state.filtered  = [];
   state.selected.clear();
+  state.unsubLog  = {};
+  state.scanDate  = null;
   senderList.innerHTML = '';
   toolbar.style.display = 'none';
-  emptyState.style.display = 'none';
+  statsBar.classList.add('hidden');
+  welcomeState.style.display = 'none';
+  emptyState.style.display   = 'none';
   unsubSection.classList.add('hidden');
   resultsSection.style.display = 'none';
   renderAuth();
@@ -252,14 +315,16 @@ btnLogout.addEventListener('click', async () => {
 
 btnScan.addEventListener('click', async () => {
   console.log('[Panel] Scan clicked');
-  state.senders = [];
+  state.senders  = [];
   state.filtered = [];
   state.selected.clear();
   senderList.innerHTML = '';
-  emptyState.style.display = 'none';
+  welcomeState.style.display   = 'none';
+  emptyState.style.display     = 'none';
   unsubSection.classList.add('hidden');
   resultsSection.style.display = 'none';
-  toolbar.style.display = 'none';
+  toolbar.style.display        = 'none';
+  statsBar.classList.add('hidden');
 
   btnScan.disabled = true;
   btnAbort.classList.remove('hidden');
@@ -268,10 +333,10 @@ btnScan.addEventListener('click', async () => {
 
   const resp = await chrome.runtime.sendMessage({ type: 'SCAN' });
   if (resp?.error) {
-    console.error('[Panel] Scan error:', resp.error);
     setProgress(0, `Chyba: ${resp.error}`);
+    btnScan.disabled = false;
+    btnAbort.classList.add('hidden');
   }
-  // Results arrive via SCAN_PROGRESS / SCAN_DONE messages
 });
 
 btnAbort.addEventListener('click', () => {
@@ -290,10 +355,10 @@ btnUnsub.addEventListener('click', () => {
   for (const s of selectedSenders) {
     const li = document.createElement('div');
     li.className = 'modal-list-item';
-    const methodLabel = { 'one-click': 'POST', 'mailto': 'Email', 'manual': 'Manuálne' }[s.unsubType] || '?';
+    const methodLabel = { 'one-click': 'POST', mailto: 'Email', manual: 'Manuálne' }[s.unsubType] || '?';
     li.innerHTML = `
       <span>${escapeHtml(s.displayName || s.email)}</span>
-      <span style="color:var(--color-text-secondary)">${methodLabel}</span>
+      <span style="color:var(--text-2);font-size:11px">${methodLabel}</span>
     `;
     modalList.appendChild(li);
   }
@@ -301,32 +366,32 @@ btnUnsub.addEventListener('click', () => {
   modalOverlay.classList.add('visible');
 });
 
-modalCancel.addEventListener('click', () => {
-  modalOverlay.classList.remove('visible');
-});
+$('btn-info').addEventListener('click', () => infoOverlay.classList.add('visible'));
+btnInfoClose.addEventListener('click', () => infoOverlay.classList.remove('visible'));
+infoOverlay.addEventListener('click', (e) => { if (e.target === infoOverlay) infoOverlay.classList.remove('visible'); });
+
+modalCancel.addEventListener('click', () => modalOverlay.classList.remove('visible'));
 
 modalConfirm.addEventListener('click', async () => {
   modalOverlay.classList.remove('visible');
-  const senders = state.senders.filter(s => state.selected.has(s.email));
+  const senders   = state.senders.filter(s => state.selected.has(s.email));
   const doArchive = optArchive.checked;
-  const doFilter = optFilter.checked;
+  const doFilter  = optFilter.checked;
   showProgress(true);
   setProgress(0, 'Odhlašujem…');
   btnUnsub.disabled = true;
 
   const resp = await chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE', senders, doArchive, doFilter });
   if (resp?.error) {
-    console.error('[Panel] Unsubscribe error:', resp.error);
     setProgress(0, `Chyba: ${resp.error}`);
     btnUnsub.disabled = false;
-    return;
   }
-  // Results arrive via UNSUBSCRIBE_DONE message
 });
 
 btnBack.addEventListener('click', () => {
   resultsSection.style.display = 'none';
   state.selected.clear();
+  renderStats();
   renderSenderList();
   btnUnsub.disabled = false;
 });
@@ -334,15 +399,13 @@ btnBack.addEventListener('click', () => {
 searchInput.addEventListener('input', () => renderSenderList());
 
 selectAllCheckbox.addEventListener('change', () => {
-  if (selectAllCheckbox.checked) {
-    state.filtered.forEach(s => state.selected.add(s.email));
-  } else {
-    state.filtered.forEach(s => state.selected.delete(s.email));
-  }
+  const selectable = state.filtered.filter(s => !state.unsubLog[s.email]);
+  if (selectAllCheckbox.checked) selectable.forEach(s => state.selected.add(s.email));
+  else                           selectable.forEach(s => state.selected.delete(s.email));
   renderSenderList();
 });
 
-// ── Service worker push messages ───────────────────────────────────────────
+// ── Service worker push messages ────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message) => {
   switch (message.type) {
@@ -351,7 +414,7 @@ chrome.runtime.onMessage.addListener((message) => {
       break;
 
     case 'SCAN_DONE':
-      state.senders = message.senders || [];
+      state.senders  = message.senders || [];
       state.unsubLog = message.unsubLog || state.unsubLog;
       state.scanDate = Date.now();
       state.filtered = [...state.senders];
@@ -359,18 +422,16 @@ chrome.runtime.onMessage.addListener((message) => {
       btnScan.disabled = false;
       btnAbort.classList.add('hidden');
       showProgress(false);
-      if (state.senders.length === 0) {
-        emptyState.style.display = 'flex';
-      } else {
-        renderSenderList();
-      }
+      updateScanDateLabel();
+      renderStats();
+      renderSenderList();
       break;
 
     case 'SCAN_ERROR':
       btnScan.disabled = false;
       btnAbort.classList.add('hidden');
       setProgress(0, `Chyba: ${message.error}`);
-      console.error('[Panel] Scan error from SW:', message.error);
+      console.error('[Panel] Scan error:', message.error);
       break;
 
     case 'UNSUBSCRIBE_PROGRESS':
@@ -385,24 +446,28 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
-// ── Init ───────────────────────────────────────────────────────────────────
+// ── Init ────────────────────────────────────────────────────────────────────
 
 async function init() {
   const resp = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+
   if (resp?.loggedIn) {
-    state.loggedIn = true;
+    state.loggedIn  = true;
     state.userEmail = resp.email || null;
-    state.unsubLog = resp.unsubLog || {};
+    state.unsubLog  = resp.unsubLog || {};
 
     if (resp.scanCache?.senders?.length) {
-      state.senders = resp.scanCache.senders;
+      state.senders  = resp.scanCache.senders;
       state.scanDate = resp.scanCache.scannedAt;
       state.filtered = [...state.senders];
+      updateScanDateLabel();
+      renderStats();
       renderSenderList();
-      const d = new Date(state.scanDate).toLocaleString('sk-SK', { dateStyle: 'short', timeStyle: 'short' });
-      console.log('[Panel] restored scan cache from', d);
+    } else {
+      welcomeState.style.display = 'flex';
     }
   }
+
   renderAuth();
   console.log('[Panel] initialized, loggedIn:', state.loggedIn);
 }

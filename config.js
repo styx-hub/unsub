@@ -1,0 +1,4 @@
+export const CONFIG = {
+  SCAN_LIMIT: 1000,
+  CONCURRENCY_LIMIT: 10,
+};

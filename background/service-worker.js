@@ -1,6 +1,6 @@
 // Service worker — message router for auth, scan, and unsubscribe operations.
 
-import { login, logout, getToken, getStoredEmail, refreshToken } from '../lib/auth.js';
+import { login, logout, getToken, getStoredEmail } from '../lib/auth.js';
 import { scan, abortScan } from '../lib/scanner.js';
 import { unsubscribeSender } from '../lib/unsubscriber.js';
 import { listMessageIdsBySender, archiveMessages, createSkipInboxFilter } from '../lib/gmail-api.js';
@@ -26,7 +26,8 @@ async function handleMessage(message) {
       if (!token) return { loggedIn: false };
       const email = await getStoredEmail();
       const { scan_cache, unsubscribed_log } = await chrome.storage.local.get(['scan_cache', 'unsubscribed_log']);
-      return { loggedIn: true, email, scanCache: scan_cache || null, unsubLog: unsubscribed_log || {} };
+      const userLog = (unsubscribed_log || {})[email] || {};
+      return { loggedIn: true, email, scanCache: scan_cache || null, unsubLog: userLog };
     }
 
     case 'LOGIN': {
@@ -38,7 +39,7 @@ async function handleMessage(message) {
 
     case 'LOGOUT': {
       await logout();
-      await chrome.storage.local.remove(['scan_cache', 'unsubscribed_log']);
+      await chrome.storage.local.remove(['scan_cache']); // unsubscribed_log preserved per-account
       return { ok: true };
     }
 
@@ -49,9 +50,29 @@ async function handleMessage(message) {
         if (senders === null) {
           chrome.runtime.sendMessage({ type: 'SCAN_ERROR', error: 'Skenovanie zrušené' }).catch(() => {});
         } else {
-          await chrome.storage.local.set({ scan_cache: { senders, scannedAt: Date.now() } });
-          const { unsubscribed_log } = await chrome.storage.local.get('unsubscribed_log');
-          chrome.runtime.sendMessage({ type: 'SCAN_DONE', senders, unsubLog: unsubscribed_log || {} }).catch(() => {});
+          const userEmail = await getStoredEmail();
+          const { scan_cache, unsubscribed_log } = await chrome.storage.local.get(['scan_cache', 'unsubscribed_log']);
+          const unsubLog = (unsubscribed_log || {})[userEmail] || {};
+
+          // Merge: new scan takes priority; keep unsubscribed senders not found in new scan
+          const merged = new Map(senders.map(s => [s.email, s]));
+          const cachedSenders = scan_cache?.senders || [];
+          for (const email of Object.keys(unsubLog)) {
+            if (!merged.has(email)) {
+              const prev = cachedSenders.find(s => s.email === email);
+              merged.set(email, prev || {
+                email,
+                displayName: unsubLog[email].displayName || email,
+                count: 0,
+                unsubType: 'manual',
+                lastHttps: null, lastMailto: null, oneClick: false,
+              });
+            }
+          }
+          const mergedSenders = [...merged.values()];
+
+          await chrome.storage.local.set({ scan_cache: { senders: mergedSenders, scannedAt: Date.now() } });
+          chrome.runtime.sendMessage({ type: 'SCAN_DONE', senders: mergedSenders, unsubLog }).catch(() => {});
         }
       }).catch((err) => {
         console.error('[SW] scan error:', err);
@@ -125,19 +146,22 @@ async function handleMessage(message) {
           }
         }
 
-        // Persist unsubscribed senders with timestamp
+        // Persist unsubscribed senders per-account so log survives logout/login
+        const userEmail = await getStoredEmail();
         const { unsubscribed_log: existing } = await chrome.storage.local.get('unsubscribed_log');
-        const log = existing || {};
+        const allLogs = existing || {};
+        const userLog = allLogs[userEmail] || {};
         const now = Date.now();
         for (const r of results) {
           if (r.status === 'success' || r.status === 'email' || r.status === 'manual') {
-            log[r.email] = { date: now, status: r.status, displayName: r.displayName };
+            userLog[r.email] = { date: now, status: r.status, displayName: r.displayName };
           }
         }
-        await chrome.storage.local.set({ unsubscribed_log: log });
+        allLogs[userEmail] = userLog;
+        await chrome.storage.local.set({ unsubscribed_log: allLogs });
 
         pushProgress(100, 'Hotovo');
-        chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE_DONE', results, unsubLog: log }).catch(() => {});
+        chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE_DONE', results, unsubLog: userLog }).catch(() => {});
       })();
 
       return { ok: true };
