@@ -189,4 +189,4 @@ function friendlyError(err) {
   return msg;
 }
 
-console.log('[SW] Gmail Newsletter Unsubscriber service worker started.');
+console.log('[SW] Unsub for Gmail service worker started.');
