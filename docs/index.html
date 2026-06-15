@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unsub for Gmail</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #04080f 0%, #0a1428 100%);
+      color: #e8f0fb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 700px;
+      background: rgba(16, 29, 53, 0.8);
+      border: 1px solid rgba(0, 212, 255, 0.15);
+      border-radius: 12px;
+      padding: 40px;
+      backdrop-filter: blur(10px);
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #00d4ff, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      color: #8fa3cc;
+      font-size: 1.1em;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+    .features {
+      display: grid;
+      gap: 20px;
+      margin: 40px 0;
+    }
+    .feature {
+      padding: 16px;
+      background: rgba(0, 212, 255, 0.06);
+      border-left: 3px solid #00d4ff;
+      border-radius: 6px;
+    }
+    .feature h3 {
+      color: #00d4ff;
+      margin-bottom: 6px;
+      font-size: 1.05em;
+    }
+    .feature p {
+      color: #8fa3cc;
+      font-size: 0.95em;
+      line-height: 1.5;
+    }
+    .links {
+      display: flex;
+      gap: 16px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+    a {
+      padding: 10px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95em;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: #00d4ff;
+      color: #04080f;
+    }
+    .btn-primary:hover {
+      background: #00b8e0;
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #00d4ff;
+      border: 1px solid #00d4ff;
+    }
+    .btn-secondary:hover {
+      background: rgba(0, 212, 255, 0.1);
+    }
+    .footer {
+      margin-top: 50px;
+      padding-top: 30px;
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+      text-align: center;
+      color: #5d7099;
+      font-size: 0.9em;
+    }
+    .legal-links {
+      margin-top: 20px;
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .legal-links a {
+      color: #00d4ff;
+      padding: 0;
+      font-size: 0.85em;
+    }
+    .legal-links a:hover {
+      color: #a78bfa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Unsub for Gmail</h1>
+    <p class="subtitle">Clean up your inbox by unsubscribing from newsletters with one click.</p>
+
+    <div class="features">
+      <div class="feature">
+        <h3>📧 Smart Scan</h3>
+        <p>Automatically finds all newsletters in your Gmail inbox using RFC 8058 unsubscribe headers.</p>
+      </div>
+      <div class="feature">
+        <h3>⚡ One-Click Unsubscribe</h3>
+        <p>Unsubscribe via POST request, email, or manual link — whatever the sender supports.</p>
+      </div>
+      <div class="feature">
+        <h3>🗂️ Auto Archive & Filter</h3>
+        <p>Automatically archive existing newsletters and create filters to skip future emails.</p>
+      </div>
+      <div class="feature">
+        <h3>🌍 Multi-language</h3>
+        <p>Full support for Slovak, Czech, and English languages.</p>
+      </div>
+    </div>
+
+    <div class="links">
+      <a href="https://chrome.google.com/webstore" class="btn-primary">Install Extension</a>
+      <a href="https://github.com/davidgombar/unsub" class="btn-secondary">View on GitHub</a>
+    </div>
+
+    <div class="footer">
+      <p>Unsub for Gmail is a Chrome extension that helps you manage your email subscriptions efficiently.</p>
+      <p style="margin-top: 15px; font-size: 0.8em; color: #4a5880;">Created by <a href="https://davidgombar.com" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">davidgombar.com</a></p>
+
+      <div class="legal-links">
+        <a href="privacy-policy.html">Privacy Policy</a>
+        <a href="terms-of-service.html">Terms of Service</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
