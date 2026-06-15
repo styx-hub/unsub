@@ -29,6 +29,8 @@ const modalSummary = $('modal-summary');
 const modalList = $('modal-list');
 const modalCancel = $('modal-cancel');
 const modalConfirm = $('modal-confirm');
+const optArchive = $('opt-archive');
+const optFilter = $('opt-filter');
 
 // App state
 let state = {
@@ -170,10 +172,16 @@ function showResults(results) {
     const item = document.createElement('div');
     item.className = 'result-item';
     const icon = { success: '✅', email: '✉️', manual: '⚠️', error: '❌' }[r.status] || '❓';
+    const extras = [];
+    if (r.archived != null) extras.push(`archivovaných ${r.archived} mailov`);
+    if (r.filterCreated) extras.push('filter vytvorený');
+    if (r.archiveError) extras.push(`archivácia zlyhala`);
+    if (r.filterError) extras.push(`filter zlyhal`);
+    const detailText = [r.detail, ...extras].filter(Boolean).join(' · ');
     item.innerHTML = `
       <span class="result-status">${icon}</span>
       <span class="result-sender">${escapeHtml(r.displayName || r.email)}</span>
-      <span class="result-detail">${escapeHtml(r.detail || '')}</span>
+      <span class="result-detail">${escapeHtml(detailText)}</span>
     `;
     resultsList.appendChild(item);
   }
@@ -283,11 +291,13 @@ modalCancel.addEventListener('click', () => {
 modalConfirm.addEventListener('click', async () => {
   modalOverlay.classList.remove('visible');
   const senders = state.senders.filter(s => state.selected.has(s.email));
+  const doArchive = optArchive.checked;
+  const doFilter = optFilter.checked;
   showProgress(true);
   setProgress(0, 'Odhlašujem…');
   btnUnsub.disabled = true;
 
-  const resp = await chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE', senders });
+  const resp = await chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE', senders, doArchive, doFilter });
   if (resp?.error) {
     console.error('[Panel] Unsubscribe error:', resp.error);
     setProgress(0, `Chyba: ${resp.error}`);
