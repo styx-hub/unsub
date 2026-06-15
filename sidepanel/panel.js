@@ -1,12 +1,12 @@
-// Side panel UI — state management, rendering, event wiring.
+import { i18n, LANGS, LANG_STORAGE_KEY, LANG_DEFAULT } from './strings.js';
 
 const $ = (id) => document.getElementById(id);
 
-// UI element references
 const btnLogin          = $('btn-login');
 const btnLogout         = $('btn-logout');
 const btnScan           = $('btn-scan');
 const btnAbort          = $('btn-abort');
+const btnUnsubLabel     = $('btn-unsub-label');
 const btnUnsub          = $('btn-unsub');
 const btnBack           = $('btn-back');
 const authStatus        = $('auth-status');
@@ -40,7 +40,6 @@ const modalConfirm      = $('modal-confirm');
 const optArchive        = $('opt-archive');
 const optFilter         = $('opt-filter');
 
-// App state
 let state = {
   loggedIn:  false,
   userEmail: null,
@@ -53,11 +52,43 @@ let state = {
   scanDate:  null,
 };
 
+// ── i18n ────────────────────────────────────────────────────────────────────
+
+function applyStrings() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = i18n.t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    el.innerHTML = i18n.t(el.dataset.i18nHtml);
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    el.placeholder = i18n.t(el.dataset.i18nPh);
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = i18n.t(el.dataset.i18nTitle);
+  });
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === i18n.lang);
+  });
+  // Re-render dynamic labels that are already visible
+  updateScanDateLabel();
+  updateSelectedCount();
+  if (state.senders.length > 0) renderSenderList();
+}
+
+async function setLang(lang) {
+  if (!LANGS.includes(lang)) return;
+  i18n.lang = lang;
+  document.documentElement.lang = lang;
+  await chrome.storage.local.set({ [LANG_STORAGE_KEY]: lang });
+  applyStrings();
+}
+
 // ── Avatar helpers ──────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
-  '#1a73e8','#0f9d58','#f4511e','#9334e6',
-  '#00897b','#e91e63','#f9ab00','#5c6bc0',
+  '#00d4ff','#a78bfa','#4ade80','#f59e0b',
+  '#f87171','#34d399','#60a5fa','#e879f9',
 ];
 
 function avatarColor(email) {
@@ -90,7 +121,7 @@ function renderAuth() {
 function renderStats() {
   const total    = state.senders.length;
   const unsubbed = Object.keys(state.unsubLog).length;
-  statFound.textContent   = total;
+  statFound.textContent    = total;
   statUnsubbed.textContent = unsubbed;
   statsBar.classList.toggle('hidden', total === 0);
 }
@@ -109,7 +140,6 @@ function renderSenderList() {
   toolbar.style.display      = hasAnySenders ? 'flex' : 'none';
 
   if (!hasAnySenders) {
-    // Was scanned (scanDate set) but nothing found
     if (state.scanDate) emptyState.style.display = 'flex';
     else                welcomeState.style.display = 'flex';
     senderList.innerHTML = '';
@@ -123,7 +153,7 @@ function renderSenderList() {
     const unsubEntry  = state.unsubLog[sender.email];
     const wasUnsubbed = !!unsubEntry;
     const unsubDateStr = wasUnsubbed
-      ? new Date(unsubEntry.date).toLocaleDateString('sk-SK')
+      ? new Date(unsubEntry.date).toLocaleDateString(langLocale())
       : null;
 
     item.className = 'sender-item' +
@@ -138,8 +168,12 @@ function renderSenderList() {
     }[sender.unsubType] || 'badge-manual';
 
     const badgeLabel = wasUnsubbed
-      ? `✓ Odhlásené ${unsubDateStr}`
-      : { 'one-click': '🟢 One-click', 'mailto': '✉️ Email', 'manual': '⚠️ Manuálne' }[sender.unsubType] || '⚠️ Manuálne';
+      ? i18n.f('badgeUnsubbed', unsubDateStr)
+      : {
+          'one-click': i18n.t('badgeOneClick'),
+          'mailto':    i18n.t('badgeEmail'),
+          'manual':    i18n.t('badgeManual'),
+        }[sender.unsubType] || i18n.t('badgeManual');
 
     item.innerHTML = `
       <div class="sender-avatar" style="background:${avatarColor(sender.email)}">${avatarLetter(sender.displayName)}</div>
@@ -148,7 +182,7 @@ function renderSenderList() {
         <div class="sender-email">${escapeHtml(sender.email)}</div>
         <div class="sender-meta">
           <span class="badge ${badgeClass}">${badgeLabel}</span>
-          <span class="msg-count">${sender.count} správ</span>
+          <span class="msg-count">${i18n.f('msgCount', sender.count)}</span>
           ${sender.lastMessageDate ? `<span class="msg-date">${formatLastDate(sender.lastMessageDate)}</span>` : ''}
         </div>
       </div>
@@ -157,20 +191,15 @@ function renderSenderList() {
         ${wasUnsubbed ? 'disabled' : ''}>
     `;
 
-    if (wasUnsubbed) {
-      senderList.appendChild(item);
-      continue;
-    }
+    if (wasUnsubbed) { senderList.appendChild(item); continue; }
 
     item.addEventListener('click', (e) => {
       if (e.target.classList.contains('sender-checkbox')) return;
       toggleSender(sender.email);
     });
-
     item.querySelector('.sender-checkbox').addEventListener('change', () => {
       toggleSender(sender.email);
     });
-
     senderList.appendChild(item);
   }
 
@@ -188,10 +217,8 @@ function updateSelectAllState() {
 
 function updateSelectedCount() {
   const n = state.selected.size;
-  selectedCount.textContent = n > 0 ? `${n} vybraných` : '';
-  btnUnsub.textContent = n > 0
-    ? `Odhlásiť vybrané (${n})`
-    : 'Odhlásiť vybrané';
+  selectedCount.textContent = n > 0 ? i18n.f('selectedCount', n) : '';
+  btnUnsubLabel.textContent = n > 0 ? i18n.f('btnUnsubN', n) : i18n.t('btnUnsub');
 }
 
 function toggleSender(email) {
@@ -201,7 +228,7 @@ function toggleSender(email) {
 }
 
 function setProgress(pct, label) {
-  progressBar.style.width  = `${pct}%`;
+  progressBar.style.width   = `${pct}%`;
   progressLabel.textContent = label;
 }
 
@@ -223,10 +250,10 @@ function showResults(results) {
     item.className = 'result-item';
     const icon = { success: '✅', email: '✉️', manual: '⚠️', error: '❌' }[r.status] || '❓';
     const extras = [];
-    if (r.archived != null)  extras.push(`${r.archived} mailov archivovaných`);
-    if (r.filterCreated)     extras.push('filter vytvorený');
-    if (r.archiveError)      extras.push(`archivácia: ${r.archiveError}`);
-    if (r.filterError)       extras.push(`filter: ${r.filterError}`);
+    if (r.archived != null) extras.push(i18n.f('resultArchived', r.archived));
+    if (r.filterCreated)    extras.push(i18n.t('resultFilter'));
+    if (r.archiveError)     extras.push(i18n.f('resultArchiveErr', r.archiveError));
+    if (r.filterError)      extras.push(i18n.f('resultFilterErr', r.filterError));
     const detailText = [r.detail, ...extras].filter(Boolean).join(' · ');
     item.innerHTML = `
       <span class="result-status">${icon}</span>
@@ -249,15 +276,18 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function langLocale() {
+  return { sk: 'sk-SK', cs: 'cs-CZ', en: 'en-US' }[i18n.lang] || 'sk-SK';
+}
+
 function formatLastDate(ts) {
   if (!ts) return '';
   const d = new Date(ts);
-  const now = new Date();
-  const diffDays = Math.floor((now - d) / 86400000);
-  if (diffDays === 0) return 'dnes';
-  if (diffDays === 1) return 'včera';
-  if (diffDays < 7)  return `pred ${diffDays} dňami`;
-  return d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' });
+  const diffDays = Math.floor((Date.now() - d) / 86400000);
+  if (diffDays === 0) return i18n.t('dateToday');
+  if (diffDays === 1) return i18n.t('dateYesterday');
+  if (diffDays < 7)  return i18n.f('dateDaysAgo', diffDays);
+  return d.toLocaleDateString(langLocale(), { day: 'numeric', month: 'short' });
 }
 
 function updateScanDateLabel() {
@@ -265,16 +295,20 @@ function updateScanDateLabel() {
   const d = new Date(state.scanDate);
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
-  scanDateLabel.textContent = 'Posledný sken: ' + (sameDay
-    ? d.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' }));
+  scanDateLabel.textContent = i18n.t('scanDatePrefix') + (sameDay
+    ? d.toLocaleTimeString(langLocale(), { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString(langLocale(), { day: 'numeric', month: 'short' }));
 }
 
 // ── Event handlers ──────────────────────────────────────────────────────────
 
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => setLang(btn.dataset.lang));
+});
+
 btnLogin.addEventListener('click', async () => {
   btnLogin.disabled    = true;
-  btnLogin.textContent = 'Prihlasujem…';
+  btnLogin.textContent = i18n.t('btnLoginLoading');
   authStatus.classList.add('hidden');
 
   try {
@@ -286,11 +320,11 @@ btnLogin.addEventListener('click', async () => {
     welcomeState.style.display = 'flex';
   } catch (err) {
     console.error('[Panel] Login error:', err);
-    authStatus.textContent = `Chyba: ${err.message}`;
+    authStatus.textContent = i18n.t('errorPrefix') + err.message;
     authStatus.classList.remove('hidden');
   } finally {
     btnLogin.disabled    = false;
-    btnLogin.textContent = 'Prihlásiť sa cez Google';
+    btnLogin.textContent = i18n.t('btnLoginLabel');
   }
 });
 
@@ -329,11 +363,11 @@ btnScan.addEventListener('click', async () => {
   btnScan.disabled = true;
   btnAbort.classList.remove('hidden');
   showProgress(true);
-  setProgress(0, 'Spúšťam skenovanie…');
+  setProgress(0, i18n.t('scanStarting'));
 
-  const resp = await chrome.runtime.sendMessage({ type: 'SCAN' });
+  const resp = await chrome.runtime.sendMessage({ type: 'SCAN', lang: i18n.lang });
   if (resp?.error) {
-    setProgress(0, `Chyba: ${resp.error}`);
+    setProgress(0, i18n.t('errorPrefix') + resp.error);
     btnScan.disabled = false;
     btnAbort.classList.add('hidden');
   }
@@ -348,14 +382,17 @@ btnUnsub.addEventListener('click', () => {
   const selectedSenders = state.senders.filter(s => state.selected.has(s.email));
   if (selectedSenders.length === 0) return;
 
-  modalSummary.textContent =
-    `Naozaj chceš odhlásiť ${selectedSenders.length} odosielateľ${selectedSenders.length === 1 ? 'a' : 'ov'}?`;
+  modalSummary.textContent = i18n.f('modalSummary', selectedSenders.length);
 
   modalList.innerHTML = '';
   for (const s of selectedSenders) {
     const li = document.createElement('div');
     li.className = 'modal-list-item';
-    const methodLabel = { 'one-click': 'POST', mailto: 'Email', manual: 'Manuálne' }[s.unsubType] || '?';
+    const methodLabel = {
+      'one-click': i18n.t('methodPost'),
+      mailto:      i18n.t('methodEmail'),
+      manual:      i18n.t('methodManual'),
+    }[s.unsubType] || '?';
     li.innerHTML = `
       <span>${escapeHtml(s.displayName || s.email)}</span>
       <span style="color:var(--text-2);font-size:11px">${methodLabel}</span>
@@ -378,12 +415,14 @@ modalConfirm.addEventListener('click', async () => {
   const doArchive = optArchive.checked;
   const doFilter  = optFilter.checked;
   showProgress(true);
-  setProgress(0, 'Odhlašujem…');
+  setProgress(0, i18n.t('unsubStarting'));
   btnUnsub.disabled = true;
 
-  const resp = await chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE', senders, doArchive, doFilter });
+  const resp = await chrome.runtime.sendMessage({
+    type: 'UNSUBSCRIBE', senders, doArchive, doFilter, lang: i18n.lang,
+  });
   if (resp?.error) {
-    setProgress(0, `Chyba: ${resp.error}`);
+    setProgress(0, i18n.t('errorPrefix') + resp.error);
     btnUnsub.disabled = false;
   }
 });
@@ -430,7 +469,7 @@ chrome.runtime.onMessage.addListener((message) => {
     case 'SCAN_ERROR':
       btnScan.disabled = false;
       btnAbort.classList.add('hidden');
-      setProgress(0, `Chyba: ${message.error}`);
+      setProgress(0, i18n.t('errorPrefix') + message.error);
       console.error('[Panel] Scan error:', message.error);
       break;
 
@@ -449,6 +488,14 @@ chrome.runtime.onMessage.addListener((message) => {
 // ── Init ────────────────────────────────────────────────────────────────────
 
 async function init() {
+  const stored = await chrome.storage.local.get(LANG_STORAGE_KEY);
+  const savedLang = stored[LANG_STORAGE_KEY];
+  if (savedLang && LANGS.includes(savedLang)) {
+    i18n.lang = savedLang;
+    document.documentElement.lang = savedLang;
+  }
+  applyStrings();
+
   const resp = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
 
   if (resp?.loggedIn) {
@@ -469,7 +516,7 @@ async function init() {
   }
 
   renderAuth();
-  console.log('[Panel] initialized, loggedIn:', state.loggedIn);
+  console.log('[Panel] initialized, lang:', i18n.lang, 'loggedIn:', state.loggedIn);
 }
 
 init();

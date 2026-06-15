@@ -5,6 +5,7 @@ import { scan, abortScan } from '../lib/scanner.js';
 import { unsubscribeSender } from '../lib/unsubscriber.js';
 import { listMessageIdsBySender, archiveMessages, createSkipInboxFilter } from '../lib/gmail-api.js';
 import { sleep } from '../lib/utils.js';
+import { sws } from '../lib/sw-strings.js';
 
 // Open the side panel automatically when the toolbar icon is clicked (MV3 recommended approach).
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
@@ -44,11 +45,12 @@ async function handleMessage(message) {
     }
 
     case 'SCAN': {
+      const scanLang = message.lang || 'sk';
       scan((progress) => {
         chrome.runtime.sendMessage({ type: 'SCAN_PROGRESS', ...progress }).catch(() => {});
-      }).then(async (senders) => {
+      }, scanLang).then(async (senders) => {
         if (senders === null) {
-          chrome.runtime.sendMessage({ type: 'SCAN_ERROR', error: 'Skenovanie zrušené' }).catch(() => {});
+          chrome.runtime.sendMessage({ type: 'SCAN_ERROR', error: sws(scanLang).aborted }).catch(() => {});
         } else {
           const userEmail = await getStoredEmail();
           const { scan_cache, unsubscribed_log } = await chrome.storage.local.get(['scan_cache', 'unsubscribed_log']);
@@ -76,7 +78,7 @@ async function handleMessage(message) {
         }
       }).catch((err) => {
         console.error('[SW] scan error:', err);
-        const msg = friendlyError(err);
+        const msg = friendlyError(err, scanLang);
         chrome.runtime.sendMessage({ type: 'SCAN_ERROR', error: msg }).catch(() => {});
       });
       return { ok: true };
@@ -88,6 +90,8 @@ async function handleMessage(message) {
 
     case 'UNSUBSCRIBE': {
       const { senders, doArchive, doFilter } = message;
+      const unsubLang = message.lang || 'sk';
+      const sw = sws(unsubLang);
       const total = senders.length;
 
       (async () => {
@@ -98,7 +102,7 @@ async function handleMessage(message) {
           const step = i + 1;
 
           pushProgress(Math.round((step / total) * 70),
-            `Odhlasovanie ${step} / ${total}: ${sender.displayName || sender.email}`);
+            sw.unsubProg(step, total, sender.displayName || sender.email));
 
           const result = await unsubscribeSender(sender);
           results.push(result);
@@ -119,7 +123,7 @@ async function handleMessage(message) {
 
             if (doArchive) {
               pushProgress(70 + Math.round(((i + 1) / succeeded.length) * 20),
-                `Archivujem maily od: ${sender.displayName || sender.email}`);
+                sw.archiving(sender.displayName || sender.email));
               try {
                 const ids = await listMessageIdsBySender(sender.email);
                 if (ids.length > 0) await archiveMessages(ids);
@@ -133,7 +137,7 @@ async function handleMessage(message) {
 
             if (doFilter) {
               pushProgress(90 + Math.round(((i + 1) / succeeded.length) * 10),
-                `Vytváram filter pre: ${sender.displayName || sender.email}`);
+                sw.filtering(sender.displayName || sender.email));
               try {
                 await createSkipInboxFilter(sender.email);
                 if (resultIdx !== -1) results[resultIdx].filterCreated = true;
@@ -160,7 +164,7 @@ async function handleMessage(message) {
         allLogs[userEmail] = userLog;
         await chrome.storage.local.set({ unsubscribed_log: allLogs });
 
-        pushProgress(100, 'Hotovo');
+        pushProgress(100, sw.done);
         chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE_DONE', results, unsubLog: userLog }).catch(() => {});
       })();
 
@@ -180,12 +184,13 @@ function pushProgress(pct, label) {
   chrome.runtime.sendMessage({ type: 'UNSUBSCRIBE_PROGRESS', pct, label }).catch(() => {});
 }
 
-function friendlyError(err) {
+function friendlyError(err, lang = 'sk') {
   const msg = err.message || '';
-  if (msg.includes('401')) return 'Platnosť prihlásenia vypršala — prihláste sa znova';
-  if (msg.includes('403')) return 'Nedostatočné oprávnenia — prihláste sa znova';
-  if (msg.includes('429')) return 'Gmail API limit — skúste znova o chvíľu';
-  if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) return 'Chyba siete — skontrolujte pripojenie';
+  const s = sws(lang);
+  if (msg.includes('401')) return s.err401;
+  if (msg.includes('403')) return s.err403;
+  if (msg.includes('429')) return s.err429;
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) return s.errNetwork;
   return msg;
 }
 
