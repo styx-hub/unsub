@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Gmail Newsletter Unsubscriber",
+  "name": "Unsub for Gmail",
   "version": "1.0.0",
   "description": "Scan your Gmail for newsletters and bulk unsubscribe via one-click POST or mailto.",
 
@@ -36,7 +36,18 @@
     "default_path": "sidepanel/panel.html"
   },
 
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
   "action": {
-    "default_title": "Gmail Unsubscriber"
+    "default_title": "Unsub for Gmail",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   }
 }

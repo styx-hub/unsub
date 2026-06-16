@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — Unsub for Gmail</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #04080f 0%, #0a1428 100%);
+      color: #e8f0fb;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: rgba(16, 29, 53, 0.8);
+      border: 1px solid rgba(0, 212, 255, 0.15);
+      border-radius: 12px;
+      padding: 40px;
+      backdrop-filter: blur(10px);
+      line-height: 1.8;
+    }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 10px;
+      color: #00d4ff;
+    }
+    .subtitle {
+      color: #8fa3cc;
+      margin-bottom: 30px;
+      font-size: 0.95em;
+    }
+    h2 {
+      color: #a78bfa;
+      font-size: 1.4em;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+    p {
+      margin-bottom: 15px;
+      color: #c5d3f0;
+    }
+    ul {
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+    li {
+      margin-bottom: 8px;
+      color: #c5d3f0;
+    }
+    .highlight {
+      background: rgba(0, 212, 255, 0.06);
+      border-left: 3px solid #00d4ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    a {
+      color: #00d4ff;
+      text-decoration: none;
+    }
+    a:hover {
+      color: #a78bfa;
+      text-decoration: underline;
+    }
+    .footer {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0, 212, 255, 0.1);
+      font-size: 0.9em;
+      color: #5d7099;
+      text-align: center;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      padding: 8px 16px;
+      background: rgba(0, 212, 255, 0.1);
+      border-radius: 6px;
+      color: #00d4ff;
+      text-decoration: none;
+      font-size: 0.9em;
+    }
+    .back-link:hover {
+      background: rgba(0, 212, 255, 0.15);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back-link">← Back to Home</a>
+
+    <h1>Privacy Policy</h1>
+    <p class="subtitle">Last updated: June 2026</p>
+
+    <h2>Introduction</h2>
+    <p>Unsub for Gmail ("the Extension") respects your privacy and is committed to protecting it. This Privacy Policy explains how we handle your data when you use the Extension.</p>
+
+    <h2>Data Collection and Use</h2>
+    <p>The Extension only accesses your Gmail account to scan for newsletters and unsubscribe links. Specifically:</p>
+    <ul>
+      <li><strong>Gmail Scan:</strong> We read the headers and content of your emails to find unsubscribe information (List-Unsubscribe headers and body links).</li>
+      <li><strong>No Server Storage:</strong> All scanning happens locally in your browser. We do not send your email content to any external server.</li>
+      <li><strong>Local Storage Only:</strong> The list of newsletters and unsubscribe history is stored only in your browser's local storage (chrome.storage.local).</li>
+    </ul>
+
+    <h2>Gmail API Scopes</h2>
+    <p>The Extension uses the following Gmail API scopes:</p>
+    <ul>
+      <li><code>gmail.readonly</code> — Read email metadata and content to find unsubscribe options</li>
+      <li><code>gmail.send</code> — Send unsubscribe emails on your behalf via Gmail</li>
+      <li><code>gmail.modify</code> — Archive emails and create filters (optional, user-controlled)</li>
+      <li><code>gmail.settings.basic</code> — Manage Gmail filters</li>
+      <li><code>userinfo.email</code> — Display your Gmail address in the Extension</li>
+    </ul>
+
+    <div class="highlight">
+      <strong>⚠️ Important:</strong> We never store, log, or transmit your email content outside your browser. All processing is done locally.
+    </div>
+
+    <h2>Authentication</h2>
+    <p>The Extension uses OAuth 2.0 (Chrome identity flow) to authenticate with Gmail. Your authentication token is managed by Chrome and never stored by us.</p>
+
+    <h2>Data Deletion</h2>
+    <p>You can delete all local data at any time by:</p>
+    <ul>
+      <li>Logging out from the Extension (clears scan cache)</li>
+      <li>Clearing your Chrome browser storage (erases all local Extension data)</li>
+      <li>Uninstalling the Extension (Chrome automatically removes all associated data)</li>
+    </ul>
+
+    <h2>Third-Party Links</h2>
+    <p>When you click "Unsubscribe" on a newsletter, the Extension may:</p>
+    <ul>
+      <li>Send a POST request to the sender's unsubscribe endpoint</li>
+      <li>Compose an unsubscribe email via Gmail</li>
+      <li>Open the sender's unsubscribe page in your browser</li>
+    </ul>
+    <p>These actions are governed by the respective newsletter sender's privacy policies, not ours.</p>
+
+    <h2>Security</h2>
+    <p>The Extension communicates with Gmail exclusively via HTTPS and never stores authentication credentials. All data remains in your browser unless you explicitly request actions (like creating a filter).</p>
+
+    <h2>Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. We will notify you of significant changes via the Extension or this page.</p>
+
+    <h2>Contact</h2>
+    <p>If you have questions about this Privacy Policy, please contact us at <a href="mailto:info@davidgombar.com">info@davidgombar.com</a> or visit <a href="https://davidgombar.com">davidgombar.com</a>.</p>
+
+    <div class="footer">
+      <p>© 2026 davidgombar.com. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

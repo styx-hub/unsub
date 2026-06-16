@@ -1,4 +1,4 @@
-# Unsub — Gmail Newsletter Unsubscriber
+# Unsub for Gmail
 
 Chrome MV3 side-panel extension. Scans Gmail for newsletters and lets you bulk unsubscribe via RFC 8058 one-click POST, mailto, or manual link — with optional archive + filter.
 

@@ -1,4 +1,4 @@
-# Gmail Newsletter Unsubscriber — Project Conventions
+# Unsub for Gmail — Project Conventions
 
 ## Stack
 - **Manifest V3** Chrome extension, no build step
